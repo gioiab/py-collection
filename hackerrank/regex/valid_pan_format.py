@@ -18,7 +18,7 @@ Enjoy!
 """
 from re import match
 
-_PAN_REGEX = '^[A-Z]{5}[0-9]{4}[A-Z]$'
+_PAN_REGEX = r'^[A-Z]{5}[0-9]{4}[A-Z]$'
 
 
 def is_valid_pan(s):
