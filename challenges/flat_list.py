@@ -15,11 +15,11 @@ The code is organized as follows:
 - the flat_list function performs the flatting task;
 - the FlatListTest class provides test cases for the flat_list function.
 
-The algorithm used by the flat_list function does not restrict the use of this code to array of integers. Indeed,
-it is applicable even to characters, strings, dictionaries and generic objects.
+The algorithm used by the flat_list function does not restrict the use of this code to array of integers.
+Indeed, it is applicable even to characters, strings, dictionaries and generic objects.
 
-The programming language used is Python 2.7 and it is assumed you have it installed into your PC. The operating system
-of reference is Linux. There are two basic ways to execute this script in Linux:
+The programming language used is Python 2.7 and it is assumed you have it installed into your PC.
+The operating system of reference is Linux. There are two basic ways to execute this script in Linux:
 1 - launching it by the command shell through the python command;
 2 - making it executable first and then launching it by the command shell.
 
