@@ -114,7 +114,7 @@ class ChatServerTest(unittest.TestCase):
 
     def tearDown(self):
         """
-        Cleans the test environment by stopping the server.
+        Clears the test environment by stopping the server.
         """
         time.sleep(1)  # Gives the client the time for disconnecting from the server
         self.chat_server.stop()
@@ -158,6 +158,6 @@ class ChatClientTest(unittest.TestCase):
 
     def tearDown(self):
         """
-        Cleans the test environment by ensuring the server will stop.
+        Clears the test environment by ensuring the server will stop.
         """
         self.server_thread.join()
