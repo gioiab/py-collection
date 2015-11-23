@@ -95,7 +95,7 @@ class ChatServer(threading.Thread):
                         print "Client (%s, %s) connected" % client_address
 
                         # Notifies all the connected clients a new one has entered
-                        self._broadcast(client_socket, "\n[%s:%s] entered the room\n" % client_address)
+                        self._broadcast(client_socket, "\n[%s:%s] entered the chat room\n" % client_address)
                 # ...else is an incoming client socket connection
                 else:
                     try:
