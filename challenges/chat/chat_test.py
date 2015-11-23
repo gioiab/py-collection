@@ -74,7 +74,7 @@ class ChatServerTest(unittest.TestCase):
         :param socket_name: the (host, port) pair related to the client connection
         :return: the message broadcast by the server when a new client connects
         """
-        return "\n[%s:%s] entered the room\n" % socket_name
+        return "\n[%s:%s] entered the chat room\n" % socket_name
 
     def _get_broadcast_message(self, socket_name, msg):
         """

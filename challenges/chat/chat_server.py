@@ -79,37 +79,41 @@ class ChatServer(threading.Thread):
         Actually runs the server.
         """
         while self.running:
-            # Gets the list sockets which are ready to be read through select non-blocking calls
+            # Gets the list of sockets which are ready to be read through select non-blocking calls
             # The select has a timeout of 60 seconds
-            ready_to_read, ready_to_write, in_error = select.select(self.connections, [], [], 60)
-            for sock in ready_to_read:
-                # If the socket instance is the server socket...
-                if sock == self.server_socket:
-                    try:
-                        # Handles a new client connection
-                        client_socket, client_address = self.server_socket.accept()
-                    except socket.error:
-                        break
-                    else:
-                        self.connections.append(client_socket)
-                        print "Client (%s, %s) connected" % client_address
+            try:
+                ready_to_read, ready_to_write, in_error = select.select(self.connections, [], [], 60)
+            except socket.error:
+                continue
+            else:
+                for sock in ready_to_read:
+                    # If the socket instance is the server socket...
+                    if sock == self.server_socket:
+                        try:
+                            # Handles a new client connection
+                            client_socket, client_address = self.server_socket.accept()
+                        except socket.error:
+                            break
+                        else:
+                            self.connections.append(client_socket)
+                            print "Client (%s, %s) connected" % client_address
 
-                        # Notifies all the connected clients a new one has entered
-                        self._broadcast(client_socket, "\n[%s:%s] entered the chat room\n" % client_address)
-                # ...else is an incoming client socket connection
-                else:
-                    try:
-                        data = sock.recv(self.RECV_BUFFER) # Gets the client message...
-                        if data:
-                            # ... and broadcasts it to all the connected clients
-                            self._broadcast(sock, "\r" + '<' + str(sock.getpeername()) + '> ' + data)
-                    except socket.error:
-                        # Broadcasts all the connected clients that a clients has left
-                        self._broadcast(sock, "\nClient (%s, %s) is offline\n" % client_address)
-                        print "Client (%s, %s) is offline" % client_address
-                        sock.close()
-                        self.connections.remove(sock)
-                        continue
+                            # Notifies all the connected clients a new one has entered
+                            self._broadcast(client_socket, "\n[%s:%s] entered the chat room\n" % client_address)
+                    # ...else is an incoming client socket connection
+                    else:
+                        try:
+                            data = sock.recv(self.RECV_BUFFER) # Gets the client message...
+                            if data:
+                                # ... and broadcasts it to all the connected clients
+                                self._broadcast(sock, "\r" + '<' + str(sock.getpeername()) + '> ' + data)
+                        except socket.error:
+                            # Broadcasts all the connected clients that a clients has left
+                            self._broadcast(sock, "\nClient (%s, %s) is offline\n" % client_address)
+                            print "Client (%s, %s) is offline" % client_address
+                            sock.close()
+                            self.connections.remove(sock)
+                            continue
         # Clears the socket connection
         self.stop()
 
