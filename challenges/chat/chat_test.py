@@ -22,8 +22,8 @@ import socket
 import unittest
 import threading
 
-from challenges.chat.chat_server import ChatServer
-from challenges.chat.chat_client import ChatClient
+from chat_server import ChatServer
+from chat_client import ChatClient
 
 _HOST = '127.0.0.1'  # defines the host as "localhost"
 _PORT = 10000        # defines the port as "10000"
@@ -161,3 +161,9 @@ class ChatClientTest(unittest.TestCase):
         Clears the test environment by ensuring the server will stop.
         """
         self.server_thread.join()
+
+
+if __name__ == '__main__':
+    """The entry point of the program. It simply runs the test cases.
+    """
+    unittest.main()
