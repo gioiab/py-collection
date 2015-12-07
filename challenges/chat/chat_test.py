@@ -17,6 +17,8 @@ The operating system of reference is Linux. There are two basic ways to execute 
 
 Enjoy!
 """
+import os
+import math
 import time
 import struct
 import socket
@@ -39,7 +41,7 @@ class ChatServerTest(unittest.TestCase):
     HOST = _HOST
     PORT = _PORT
     RECV_BUFFER = _RECV_BUFFER
-    RECV_MSG_LEN = 4
+    RECV_MSG_LEN = _RECV_MSG_LEN
 
     def setUp(self):
         """
@@ -131,6 +133,34 @@ class ChatServerTest(unittest.TestCase):
         fc1.close()
         fc2.close()
         fc3.close()
+
+    def test_heavy_broadcast(self):
+        """
+        Tests the message broadcasting performed by the server when big
+        messages are involved.
+        """
+        fc1 = self._get_fake_client()  # The first client connects
+
+        fc2 = self._get_fake_client()  # The second client connects
+        fc2_enter_msg = self._get_enter_message(fc2.getsockname())
+        fc2_msg_pack_len = self._get_packed_length(fc2_enter_msg)
+        self.assertEqual(fc1.recv(self.RECV_MSG_LEN), fc2_msg_pack_len)
+        self.assertEqual(fc1.recv(self.RECV_BUFFER), fc2_enter_msg)
+
+        fc2_orig_msg = os.urandom(10000)  # Creates a message of 10000 bytes
+        fc2_orig_msg_packed_len = self._get_packed_length(fc2_orig_msg)
+        fc2.send(fc2_orig_msg_packed_len + fc2_orig_msg)  # The second client sends an heavy message
+        fc2_broadcast_msg = self._get_broadcast_message(fc2.getsockname(), fc2_orig_msg)
+        fc2_broadcast_msg_pack_len = self._get_packed_length(fc2_broadcast_msg)
+        self.assertEqual(fc1.recv(self.RECV_MSG_LEN), fc2_broadcast_msg_pack_len)
+
+        fc2_receipt_message = ''
+        for _ in xrange(3): # Expecting 3 chunks of 4096 bytes ( ceil [10000 bytes / 4096 bytes] = 3 )
+            fc2_receipt_message += fc1.recv(self.RECV_BUFFER)
+        self.assertEqual(fc2_receipt_message, fc2_broadcast_msg)
+
+        fc1.close()
+        fc2.close()
 
     def tearDown(self):
         """
