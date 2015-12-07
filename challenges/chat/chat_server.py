@@ -17,6 +17,8 @@ The operating system of reference is Linux. There are two basic ways to execute 
 
 Enjoy!
 """
+import math
+import struct
 import socket
 import select
 import threading
@@ -30,7 +32,8 @@ class ChatServer(threading.Thread):
     """
 
     MAX_WAITING_CONNECTIONS = 10  # defines the max number of accepted waiting connections before the rejection
-    RECV_BUFFER = 4096  # defines the size for the receiving buffer
+    RECV_BUFFER = 4096  # defines the size (in bytes) of the receiving buffer
+    RECV_MSG_LEN = 4  # defines the size (in bytes) of the placeholder contained at the beginning of the messages
 
     def __init__(self, host, port):
         """
@@ -55,6 +58,46 @@ class ChatServer(threading.Thread):
         self.server_socket.listen(self.MAX_WAITING_CONNECTIONS)
         self.connections.append(self.server_socket)
 
+    def _send(self, sock, msg):
+        """
+        Prefixes each message with a 4-byte length before sending.
+
+        :param sock: the incoming socket
+        :param msg: the message to send
+        """
+        # Packs the message with 4 leading bytes representing the message length
+        msg = struct.pack('>I', len(msg)) + msg
+        # Sends the packed message
+        sock.send(msg)
+
+    def _receive(self, sock):
+        """
+        Receives an incoming message from the client and unpacks it.
+
+        :param sock: the incoming socket
+        """
+        data = None
+        # Retrieves the first 4 bytes from the message
+        msg_len = sock.recv(self.RECV_MSG_LEN)
+        # If the message has the 4 bytes representing the length...
+        if msg_len:
+            data = ''
+            # Unpacks the message and gets the message length
+            msg_len = struct.unpack('>I', msg_len)[0]
+            # Computes the number of expected chunks of RECV_BUFFER size
+            chunks = int(math.ceil(msg_len / float(self.RECV_BUFFER)))
+            for _ in xrange(chunks):
+                # Retrieves the chunk i-th chunk of RECV_BUFFER size
+                chunk = sock.recv(self.RECV_BUFFER)
+                # If there isn't the expected chunk...
+                if not chunk:
+                    data = None
+                    break # ... Simply breaks the loop
+                else:
+                    # Merges the chunks content
+                    data += chunk
+        return data
+
     def _broadcast(self, client_socket, client_message):
         """
         Broadcasts a message to all the clients different from both the server itself and
@@ -68,7 +111,7 @@ class ChatServer(threading.Thread):
             is_not_the_client_sending = sock != client_socket
             if is_not_the_server and is_not_the_client_sending:
                 try :
-                    sock.send(client_message)
+                    self._send(sock, client_message)
                 except socket.error:
                     # Handles a possible disconnection of the client "sock" by...
                     sock.close()  # closing the socket connection
@@ -103,7 +146,7 @@ class ChatServer(threading.Thread):
                     # ...else is an incoming client socket connection
                     else:
                         try:
-                            data = sock.recv(self.RECV_BUFFER) # Gets the client message...
+                            data = self._receive(sock) # Gets the client message...
                             if data:
                                 # ... and broadcasts it to all the connected clients
                                 self._broadcast(sock, "\r" + '<' + str(sock.getpeername()) + '> ' + data)

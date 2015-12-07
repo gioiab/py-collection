@@ -18,6 +18,7 @@ The operating system of reference is Linux. There are two basic ways to execute 
 Enjoy!
 """
 import time
+import struct
 import socket
 import unittest
 import threading
@@ -27,8 +28,8 @@ from chat_client import ChatClient
 
 _HOST = '127.0.0.1'  # defines the host as "localhost"
 _PORT = 10000        # defines the port as "10000"
-_RECV_BUFFER = 4096  # defines the size for the receiving buffer
-
+_RECV_BUFFER = 4096  # defines the size of the receiving buffer
+_RECV_MSG_LEN = 4    # defines the size of the placeholder contained at the beginning of the messages
 
 class ChatServerTest(unittest.TestCase):
     """
@@ -38,6 +39,7 @@ class ChatServerTest(unittest.TestCase):
     HOST = _HOST
     PORT = _PORT
     RECV_BUFFER = _RECV_BUFFER
+    RECV_MSG_LEN = 4
 
     def setUp(self):
         """
@@ -87,6 +89,15 @@ class ChatServerTest(unittest.TestCase):
         """
         return "\r" + '<' + str(socket_name) + '> ' + msg
 
+    def _get_packed_length(self, msg):
+        """
+        Given a message, return its packed length.
+
+        :param msg: the message
+        :return: the packed length of the message
+        """
+        return struct.pack('>I', len(msg))
+
     def test_broadcast(self):
         """
         Tests the message broadcasting performed by the server.
@@ -95,17 +106,26 @@ class ChatServerTest(unittest.TestCase):
 
         fc2 = self._get_fake_client()  # The second client connects
         fc2_enter_msg = self._get_enter_message(fc2.getsockname())
+        fc2_msg_pack_len = self._get_packed_length(fc2_enter_msg)
+        self.assertEqual(fc1.recv(self.RECV_MSG_LEN), fc2_msg_pack_len)
         self.assertEqual(fc1.recv(self.RECV_BUFFER), fc2_enter_msg)
 
         fc3 = self._get_fake_client()  # The third client connects
         fc3_enter_msg = self._get_enter_message(fc3.getsockname())
+        fc3_msg_pack_len = self._get_packed_length(fc3_enter_msg)
+        self.assertEqual(fc1.recv(self.RECV_MSG_LEN), fc3_msg_pack_len)
         self.assertEqual(fc1.recv(self.RECV_BUFFER), fc3_enter_msg)
+        self.assertEqual(fc2.recv(self.RECV_MSG_LEN), fc3_msg_pack_len)
         self.assertEqual(fc2.recv(self.RECV_BUFFER), fc3_enter_msg)
 
         fc3_orig_msg = 'Hello'
-        fc3.send(fc3_orig_msg)  # The third client sends a message
+        fc3_orig_msg_packed_len = self._get_packed_length(fc3_orig_msg)
+        fc3.send(fc3_orig_msg_packed_len + fc3_orig_msg)  # The third client sends a message
         fc3_broadcast_msg = self._get_broadcast_message(fc3.getsockname(), fc3_orig_msg)
+        fc3_broadcast_msg_pack_len = self._get_packed_length(fc3_broadcast_msg)
+        self.assertEqual(fc1.recv(self.RECV_MSG_LEN), fc3_broadcast_msg_pack_len)
         self.assertEqual(fc1.recv(self.RECV_BUFFER), fc3_broadcast_msg)
+        self.assertEqual(fc2.recv(self.RECV_MSG_LEN), fc3_broadcast_msg_pack_len)
         self.assertEqual(fc2.recv(self.RECV_BUFFER), fc3_broadcast_msg)
 
         fc1.close()

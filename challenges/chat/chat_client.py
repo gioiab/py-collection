@@ -18,6 +18,8 @@ The operating system of reference is Linux. There are two basic ways to execute 
 Enjoy!
 """
 import sys
+import math
+import struct
 import socket
 import select
 import threading
@@ -27,7 +29,8 @@ _PORT = 10000        # defines the port as "10000"
 
 class ChatClient(threading.Thread):
 
-    RECV_BUFFER = 4096
+    RECV_BUFFER = 4096  # defines the size (in bytes) of the receiving buffer
+    RECV_MSG_LEN = 4  # defines the size (in bytes) of the placeholder contained at the beginning of the messages
 
     def __init__(self, host, port):
         """
@@ -61,6 +64,43 @@ class ChatClient(threading.Thread):
         sys.stdout.write('<You> ')
         sys.stdout.flush()
 
+    def _send(self, msg):
+        """
+        Prefixes each message with a 4-byte length before sending.
+        """
+        # Packs the message with 4 leading bytes representing the message length
+        msg = struct.pack('>I', len(msg)) + msg
+        # Sends the packed message
+        self.client_socket.send(msg)
+
+    def _receive(self, sock):
+        """
+        Receives an incoming message from the client and unpacks it.
+
+        :param sock: the incoming socket
+        """
+        data = None
+        # Retrieves the first 4 bytes from the message
+        msg_len = sock.recv(self.RECV_MSG_LEN)
+        # If the message has the 4 bytes representing the length...
+        if msg_len:
+            data = ''
+            # Unpacks the message and gets the message length
+            msg_len = struct.unpack('>I', msg_len)[0]
+            # Computes the number of expected chunks of RECV_BUFFER size
+            chunks = int(math.ceil(msg_len / float(self.RECV_BUFFER)))
+            for _ in xrange(chunks):
+                # Retrieves the chunk i-th chunk of RECV_BUFFER size
+                chunk = sock.recv(self.RECV_BUFFER)
+                # If there isn't the expected chunk...
+                if not chunk:
+                    data = None
+                    break # ... Simply breaks the loop
+                else:
+                    # Merges the chunks content
+                    data += chunk
+        return data
+
     def _run(self):
         """
         Actually runs the client.
@@ -78,18 +118,18 @@ class ChatClient(threading.Thread):
                 for sock in ready_to_read:
                     # If there's an incoming message from the server...
                     if sock == self.client_socket:
-                        data = sock.recv(4096)  # Gets the server message
+                        data = self._receive(sock)  # Gets the server message
                         if not data:
                             print '\nDisconnected from the server.'
                             sys.exit()
                         else:
-                            sys.stdout.write('\n' + data)  # Writes the server message
-                            self._prompt()                 # followed by a prompt
+                            sys.stdout.write(data)  # Writes the server message
+                            self._prompt()          # followed by a prompt
                     # ... else, the user has entered a message on the console
                     else :
                         msg = sys.stdin.readline()
-                        self.client_socket.send(msg)
-                        self._prompt()
+                        self._send(msg) # Sends the message to the server...
+                        self._prompt()  # ...and returns the prompt
         # Clears the socket connection
         self.stop()
 
