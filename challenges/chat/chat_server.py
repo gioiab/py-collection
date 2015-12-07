@@ -75,6 +75,7 @@ class ChatServer(threading.Thread):
         Receives an incoming message from the client and unpacks it.
 
         :param sock: the incoming socket
+        :return: the unpacked message
         """
         data = None
         # Retrieves the first 4 bytes from the message
